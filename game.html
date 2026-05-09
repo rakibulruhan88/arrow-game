@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arrow Master</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #050914;
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #0a102e 0%, #03050c 100%);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Elements */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none; /* Let clicks pass through to canvas */
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .title-icon {
+            font-size: 30px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .title {
+            font-size: 36px;
+            letter-spacing: 3px;
+            color: #e0f7fa;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 30px #00e5ff;
+        }
+
+        .score-box {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 20px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            color: #a0aec0;
+            letter-spacing: 1px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        /* Starry Background CSS */
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="stars" id="stars"></div>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-layer">
+        <div class="header">
+            <div class="title-container">
+                <div class="title-icon">🏹</div>
+                <h1 class="title">ARROW MASTER</h1>
+            </div>
+        </div>
+        <div class="score-box">
+            Score: <span id="scoreVal">0</span>
+        </div>
+        <div class="instructions">Click & Drag to Shoot</div>
+    </div>
+</div>
+
+<script>
+    // Generate static stars for background
+    const starsContainer = document.getElementById('stars');
+    for (let i = 0; i < 150; i++) {
+        const star = document.createElement('div');
+        star.style.position = 'absolute';
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.width = `${Math.random() * 3}px`;
+        star.style.height = star.style.width;
+        star.style.backgroundColor = '#fff';
+        star.style.borderRadius = '50%';
+        star.style.opacity = Math.random() * 0.8 + 0.2;
+        starsContainer.appendChild(star);
+    }
+
+    // Canvas Setup
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Game Variables
+    let score = 0;
+    const scoreEl = document.getElementById('scoreVal');
+    const gravity = 0.25;
+    let arrows = [];
+    let particles = [];
+    let target;
+    let bow;
+    
+    // Drag Variables
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragCurrentX = 0;
+    let dragCurrentY = 0;
+
+    // Advanced Mechanics: Floating Target
+    class Target {
+        constructor() {
+            this.radius = 60;
+            this.x = width - 150;
+            this.y = height / 2;
+            this.baseY = height / 2;
+            this.angle = 0;
+        }
+
+        update() {
+            // Smooth floating animation
+            this.angle += 0.02;
+            this.y = this.baseY + Math.sin(this.angle) * 100;
+            // Keep updated on resize
+            this.x = width - 150; 
+            this.baseY = height / 2;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            // Outer Red Glow
+            ctx.shadowColor = '#ff0044';
+            ctx.shadowBlur = 30;
+            
+            // Outer Red
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff0044';
+            ctx.fill();
+
+            ctx.shadowBlur = 0; // Reset blur for inner rings
+
+            // Middle White
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // Inner Yellow (Bullseye)
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 0.25, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffcc00';
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    class Bow {
+        constructor() {
+            this.x = 150;
+            this.y = height / 2;
+            this.height = 120;
+            this.pullDistance = 0;
+            this.angle = 0;
+        }
+
+        update() {
+            this.y = height / 2; // Keep centered vertically
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+
+            // Bow Glow
+            ctx.shadowColor = '#00ffcc';
+            ctx.shadowBlur = 15;
+
+            // Bow arc
+            ctx.beginPath();
+            ctx.moveTo(0, -this.height / 2);
+            ctx.quadraticCurveTo(this.pullDistance * 0.5 + 20, 0, 0, this.height / 2);
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Bow string
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.height / 2);
+            ctx.lineTo(-this.pullDistance, 0);
+            ctx.lineTo(0, this.height / 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    }
+
+    class Arrow {
+        constructor(x, y, vx, vy) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.length = 60;
+            this.angle = Math.atan2(vy, vx);
+            this.isFlying = true;
+            this.stuckTarget = false;
+            this.stuckGround = false;
+            this.offsetX = 0;
+            this.offsetY = 0;
+        }
+
+        update() {
+            if (this.isFlying) {
+                this.vy += gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle = Math.atan2(this.vy, this.vx);
+
+                // Check Target Collision
+                const dx = this.x + Math.cos(this.angle)*this.length/2 - target.x;
+                const dy = this.y + Math.sin(this.angle)*this.length/2 - target.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < target.radius) {
+                    this.isFlying = false;
+                    this.stuckTarget = true;
+                    // Calculate offsets to stick perfectly while target moves
+                    this.offsetX = this.x - target.x;
+                    this.offsetY = this.y - target.y;
+                    
+                    // Score Logic
+                    if (dist < target.radius * 0.25) {
+                        score += 50; // Bullseye
+                        createParticles(this.x, this.y, '#ffcc00');
+                    } else if (dist < target.radius * 0.6) {
+                        score += 20; // Middle
+                        createParticles(this.x, this.y, '#ffffff');
+                    } else {
+                        score += 10; // Outer
+                        createParticles(this.x, this.y, '#ff0044');
+                    }
+                    scoreEl.innerText = score;
+                }
+
+                // Check Ground Collision (Miss)
+                if (this.y > height - 20) {
+                    this.isFlying = false;
+                    this.stuckGround = true;
+                }
+            } else if (this.stuckTarget) {
+                // Move with target
+                this.x = target.x + this.offsetX;
+                this.y = target.y + this.offsetY;
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+
+            // Arrow Shaft
+            ctx.beginPath();
+            ctx.moveTo(-this.length / 2, 0);
+            ctx.lineTo(this.length / 2, 0);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Arrow Head
+            ctx.beginPath();
+            ctx.moveTo(this.length / 2, 0);
+            ctx.lineTo(this.length / 2 - 10, -5);
+            ctx.lineTo(this.length / 2 - 10, 5);
+            ctx.fillStyle = '#a0aec0';
+            ctx.fill();
+
+            // Arrow Fletching (Feathers)
+            ctx.beginPath();
+            ctx.moveTo(-this.length / 2, 0);
+            ctx.lineTo(-this.length / 2 - 10, -5);
+            ctx.lineTo(-this.length / 2 - 5, 0);
+            ctx.lineTo(-this.length / 2 - 10, 5);
+            ctx.fillStyle = '#00ffcc';
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    // Particle System for Bullseye hits
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 10;
+            this.vy = (Math.random() - 0.5) * 10;
+            this.life = 1;
+            this.decay = Math.random() * 0.02 + 0.02;
+            this.color = color;
+            this.size = Math.random() * 4 + 2;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= this.decay;
+        }
+        draw() {
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function createParticles(x, y, color) {
+        for (let i = 0; i < 20; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    // Initialize Objects
+    target = new Target();
+    bow = new Bow();
+
+    // Input Handling (Mouse & Touch)
+    function handleStart(e) {
+        isDragging = true;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        dragStartX = clientX;
+        dragStartY = clientY;
+        dragCurrentX = clientX;
+        dragCurrentY = clientY;
+    }
+
+    function handleMove(e) {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        dragCurrentX = clientX;
+        dragCurrentY = clientY;
+
+        // Calculate Bow Pull and Angle
+        const dx = dragStartX - dragCurrentX;
+        const dy = dragStartY - dragCurrentY;
+        
+        bow.angle = Math.atan2(dy, dx);
+        bow.pullDistance = Math.min(100, Math.sqrt(dx*dx + dy*dy));
+    }
+
+    function handleEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        if (bow.pullDistance > 10) {
+            // Shoot Arrow
+            const power = bow.pullDistance * 0.4; // Velocity multiplier
+            const vx = Math.cos(bow.angle) * power;
+            const vy = Math.sin(bow.angle) * power;
+            
+            // Adjust start position to bow string
+            const startX = bow.x - Math.cos(bow.angle) * bow.pullDistance;
+            const startY = bow.y - Math.sin(bow.angle) * bow.pullDistance;
+
+            arrows.push(new Arrow(startX, startY, vx, vy));
+        }
+        
+        // Reset bow
+        bow.pullDistance = 0;
+        bow.angle = 0;
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+
+    canvas.addEventListener('touchstart', handleStart);
+    canvas.addEventListener('touchmove', handleMove);
+    window.addEventListener('touchend', handleEnd);
+
+    // Draw Trajectory Prediction
+    function drawTrajectory() {
+        if (!isDragging || bow.pullDistance <= 10) return;
+
+        const power = bow.pullDistance * 0.4;
+        const vx = Math.cos(bow.angle) * power;
+        const vy = Math.sin(bow.angle) * power;
+        let tx = bow.x - Math.cos(bow.angle) * bow.pullDistance;
+        let ty = bow.y - Math.sin(bow.angle) * bow.pullDistance;
+        let tvx = vx;
+        let tvy = vy;
+
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        
+        // Simulate path for 40 steps
+        for (let i = 0; i < 40; i++) {
+            tvy += gravity;
+            tx += tvx;
+            ty += tvy;
+            ctx.lineTo(tx, ty);
+        }
+
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 10]); // Dashed line
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset
+    }
+
+    // Main Game Loop
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+
+        target.update();
+        target.draw();
+
+        bow.update();
+        
+        if (isDragging) {
+            drawTrajectory();
+        }
+
+        // Render current dragged arrow inside bow
+        if (isDragging && bow.pullDistance > 10) {
+            ctx.save();
+            const ax = bow.x - Math.cos(bow.angle) * bow.pullDistance;
+            const ay = bow.y - Math.sin(bow.angle) * bow.pullDistance;
+            ctx.translate(ax, ay);
+            ctx.rotate(bow.angle);
+            
+            // Draw dummy arrow loaded in bow
+            ctx.beginPath();
+            ctx.moveTo(-30, 0); ctx.lineTo(30, 0);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(30, 0); ctx.lineTo(20, -5); ctx.lineTo(20, 5);
+            ctx.fillStyle = '#a0aec0'; ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(-30, 0); ctx.lineTo(-40, -5); ctx.lineTo(-35, 0); ctx.lineTo(-40, 5);
+            ctx.fillStyle = '#00ffcc'; ctx.fill();
+            ctx.restore();
+        }
+
+        bow.draw();
+
+        // Manage Arrows
+        for (let i = arrows.length - 1; i >= 0; i--) {
+            arrows[i].update();
+            arrows[i].draw();
+            
+            // Remove arrows that go too far off screen
+            if (arrows[i].x > width + 200 || arrows[i].x < -200) {
+                arrows.splice(i, 1);
+            }
+        }
+
+        // Manage Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    // Start Loop
+    animate();
+
+</script>
+</body>
+</html>
