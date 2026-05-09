@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arrow Master - 3D Room Edition</title>
+    <title>Arrow Master - 3D Room Edition (Pro)</title>
     <style>
         :root {
             --bg-color: #03050c;
             --primary-glow: #00ffcc;
+            --panel-bg: rgba(10, 16, 46, 0.95);
         }
 
         * {
@@ -36,7 +37,6 @@
             width: 100%;
             height: 100%;
             background: #020308;
-            /* Inset shadow to give a deep room feel */
             box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9), inset 0 0 50px rgba(0, 255, 204, 0.1);
         }
 
@@ -57,7 +57,7 @@
             width: 100%;
             height: 100%;
             z-index: 2;
-            pointer-events: none;
+            pointer-events: none; /* Let touches pass through to canvas */
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -74,10 +74,38 @@
         .header {
             display: flex;
             align-items: center;
+            gap: 15px;
+        }
+
+        /* Elements inside UI layer that need clicking */
+        .clickable {
+            pointer-events: auto; 
+        }
+
+        .gear-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 204, 0.5);
+            color: #fff;
+            font-size: 24px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+        }
+
+        .gear-btn:hover {
+            background: rgba(0, 255, 204, 0.2);
+            transform: rotate(90deg);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
         }
 
         .title {
-            font-size: clamp(20px, 5vw, 36px);
+            font-size: clamp(20px, 4vw, 36px);
             letter-spacing: 2px;
             color: #e0f7fa;
             text-transform: uppercase;
@@ -106,18 +134,141 @@
             animation: pulse 2s infinite;
         }
 
-        @media (max-width: 600px) {
-            .top-bar {
-                flex-direction: column;
-                gap: 15px;
-                padding: 15px 10px;
-            }
-        }
-
         @keyframes pulse {
             0% { opacity: 0.5; }
             50% { opacity: 1; }
             100% { opacity: 0.5; }
+        }
+
+        /* --- Modal Settings & History --- */
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            border: 2px solid var(--primary-glow);
+            border-radius: 15px;
+            padding: 25px;
+            width: 90%;
+            max-width: 450px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.3);
+            position: relative;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #ff0044;
+            transition: 0.2s;
+        }
+        
+        .close-btn:hover { color: #ff4d79; }
+
+        .modal h2 {
+            font-size: 22px;
+            color: var(--primary-glow);
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .setting-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .setting-group select {
+            background: #020308;
+            color: #fff;
+            border: 1px solid var(--primary-glow);
+            padding: 5px 10px;
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn {
+            background: var(--primary-glow);
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .btn:hover { background: #00cca3; box-shadow: 0 0 10px var(--primary-glow); }
+        .btn-danger { background: #ff0044; color: #fff; }
+        .btn-danger:hover { background: #cc0036; box-shadow: 0 0 10px #ff0044; }
+
+        .history-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 200px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item .date { color: #a0aec0; font-size: 12px; }
+        .history-item .score { font-weight: bold; color: var(--primary-glow); }
+
+        /* Custom Scrollbar */
+        .history-container::-webkit-scrollbar { width: 6px; }
+        .history-container::-webkit-scrollbar-thumb { background: var(--primary-glow); border-radius: 10px; }
+
+        @media (max-width: 600px) {
+            .top-bar { padding: 15px; }
+            .title { font-size: 18px; }
+            .gear-btn { width: 35px; height: 35px; font-size: 18px; }
         }
     </style>
 </head>
@@ -129,6 +280,7 @@
     <div class="ui-layer">
         <div class="top-bar">
             <div class="header">
+                <button id="gearBtn" class="gear-btn clickable">⚙️</button>
                 <h1 class="title">🏹 ARROW MASTER</h1>
             </div>
             <div class="score-box">
@@ -139,11 +291,138 @@
     </div>
 </div>
 
+<!-- Settings & History Modal -->
+<div id="settingsModal" class="modal clickable">
+    <div class="modal-content">
+        <span id="closeModal" class="close-btn">&times;</span>
+        
+        <h2>Game Settings</h2>
+        <div class="setting-group">
+            <span>Difficulty:</span>
+            <select id="diffSelect">
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+                <option value="Very Hard">Very Hard</option>
+                <option value="Very Complex">Very Complex</option>
+            </select>
+        </div>
+        <button id="resetGameBtn" class="btn">Reset Game & Save Score</button>
+
+        <h2>Match History</h2>
+        <div class="history-container" id="historyList">
+            <!-- History items will be injected here via JS -->
+        </div>
+        <button id="clearHistoryBtn" class="btn btn-danger">Clear History</button>
+    </div>
+</div>
+
 <script>
     const GRAVITY = 0.25;
     const PULL_POWER_MULTIPLIER = 0.45;
-    const WALL_THICKNESS = 15; // The point where arrows stick to the screen edges
     
+    // -- Local Storage Variables & Setup --
+    let score = parseInt(localStorage.getItem('arrow_score')) || 0;
+    let currentDifficulty = localStorage.getItem('arrow_difficulty') || 'Medium';
+    let matchHistory = JSON.parse(localStorage.getItem('arrow_history')) || [];
+
+    const scoreEl = document.getElementById('scoreVal');
+    scoreEl.innerText = score;
+
+    // -- Difficulty Configuration --
+    const difficulties = {
+        'Easy': { speed: 0.015, sizeMult: 1.3, rangeMult: 0.5, erratic: false, moveX: false },
+        'Medium': { speed: 0.025, sizeMult: 1.0, rangeMult: 1.0, erratic: false, moveX: false },
+        'Hard': { speed: 0.04, sizeMult: 0.75, rangeMult: 1.5, erratic: false, moveX: false },
+        'Very Hard': { speed: 0.06, sizeMult: 0.6, rangeMult: 2.0, erratic: true, moveX: false },
+        'Very Complex': { speed: 0.08, sizeMult: 0.5, rangeMult: 2.2, erratic: true, moveX: true }
+    };
+
+    // -- DOM Elements for Modal --
+    const gearBtn = document.getElementById('gearBtn');
+    const modal = document.getElementById('settingsModal');
+    const closeModal = document.getElementById('closeModal');
+    const diffSelect = document.getElementById('diffSelect');
+    const resetGameBtn = document.getElementById('resetGameBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const historyList = document.getElementById('historyList');
+
+    // Set initial difficulty in dropdown
+    diffSelect.value = currentDifficulty;
+
+    // UI Events
+    gearBtn.addEventListener('click', openModal);
+    closeModal.addEventListener('click', closeMod);
+    diffSelect.addEventListener('change', (e) => {
+        currentDifficulty = e.target.value;
+        localStorage.setItem('arrow_difficulty', currentDifficulty);
+        if(target) target.updateResponsive(); // Resize target immediately
+    });
+
+    resetGameBtn.addEventListener('click', () => {
+        if (score > 0) {
+            // Save to history
+            const date = new Date().toLocaleString();
+            matchHistory.unshift({ date: date, score: score, diff: currentDifficulty });
+            localStorage.setItem('arrow_history', JSON.stringify(matchHistory));
+        }
+        
+        // Reset state
+        score = 0;
+        scoreEl.innerText = score;
+        localStorage.setItem('arrow_score', score);
+        
+        arrows = []; // Clear arrows from screen
+        
+        renderHistory();
+        closeMod();
+    });
+
+    clearHistoryBtn.addEventListener('click', () => {
+        matchHistory = [];
+        localStorage.setItem('arrow_history', JSON.stringify(matchHistory));
+        renderHistory();
+    });
+
+    function openModal() {
+        modal.classList.add('active');
+        renderHistory();
+    }
+    
+    function closeMod() {
+        modal.classList.remove('active');
+    }
+
+    function renderHistory() {
+        historyList.innerHTML = '';
+        if(matchHistory.length === 0) {
+            historyList.innerHTML = '<div style="text-align:center; padding: 20px; color: #666;">No history found.</div>';
+            return;
+        }
+        matchHistory.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `
+                <div>
+                    <div class="score">Score: ${item.score} <span style="font-size:11px; color:#fff; font-weight:normal;">(${item.diff})</span></div>
+                    <div class="date">${item.date}</div>
+                </div>
+            `;
+            historyList.appendChild(div);
+        });
+    }
+
+    // Modal close when clicking outside
+    window.addEventListener('click', (e) => {
+        if(e.target === modal) closeMod();
+    });
+
+    function saveScore() {
+        scoreEl.innerText = score;
+        localStorage.setItem('arrow_score', score);
+    }
+
+    // --- GAME ENGINE ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     let width, height;
@@ -151,14 +430,11 @@
     function resize() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
-        
         if(target) target.updateResponsive();
         if(bow) bow.updateResponsive();
     }
     window.addEventListener('resize', resize);
 
-    let score = 0;
-    const scoreEl = document.getElementById('scoreVal');
     let arrows = [];
     let starParticles = [];
     let target;
@@ -168,9 +444,7 @@
     let dragStartX = 0, dragStartY = 0;
     let dragCurrentX = 0, dragCurrentY = 0;
 
-    // --- Draw the 3D Room Environment ---
     function drawRoom() {
-        // Floor perspective lines
         ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -178,14 +452,12 @@
             ctx.moveTo(i, height);
             ctx.lineTo(width/2, height/2 - 100);
         }
-        // Ceiling perspective lines
         for(let i = 0; i <= width; i += 50) {
             ctx.moveTo(i, 0);
             ctx.lineTo(width/2, height/2 - 100);
         }
         ctx.stroke();
 
-        // Neon borders around the room
         ctx.strokeStyle = 'rgba(0, 255, 204, 0.15)';
         ctx.lineWidth = 4;
         ctx.strokeRect(0, 0, width, height);
@@ -198,16 +470,34 @@
         }
 
         updateResponsive() {
-            this.radius = Math.max(30, Math.min(60, width * 0.1)); 
-            this.x = width - Math.max(50, width * 0.2); 
+            let config = difficulties[currentDifficulty];
+            // Apply size multiplier based on difficulty
+            this.radius = Math.max(20, Math.min(60, width * 0.1)) * config.sizeMult; 
+            this.baseX = width - Math.max(50, width * 0.2); 
+            this.x = this.baseX;
             this.baseY = height / 2 + 20;
             this.y = this.baseY;
         }
 
         update() {
-            this.angle += 0.02;
-            let floatRange = Math.min(100, height * 0.2);
-            this.y = this.baseY + Math.sin(this.angle) * floatRange;
+            let config = difficulties[currentDifficulty];
+            this.angle += config.speed;
+            
+            let floatRange = Math.min(100, height * 0.2) * config.rangeMult;
+            
+            // Erratic movement for Harder levels
+            if(config.erratic) {
+                this.y = this.baseY + Math.sin(this.angle) * floatRange + Math.cos(this.angle * 2.3) * (floatRange * 0.4);
+            } else {
+                this.y = this.baseY + Math.sin(this.angle) * floatRange;
+            }
+
+            // X axis movement for Very Complex
+            if(config.moveX) {
+                this.x = this.baseX + Math.sin(this.angle * 0.8) * 80;
+            } else {
+                this.x = this.baseX;
+            }
         }
 
         draw() {
@@ -324,7 +614,7 @@
                 this.y += this.vy;
                 this.angle = Math.atan2(this.vy, this.vx);
 
-                // --- Target Collision ---
+                // Target Collision
                 const dx = this.x + Math.cos(this.angle) * this.length / 2 - target.x;
                 const dy = this.y + Math.sin(this.angle) * this.length / 2 - target.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -345,27 +635,27 @@
                         score += 10; 
                         createStarExplosion(this.x, this.y, '#ff0044');
                     }
-                    scoreEl.innerText = score;
-                    return; // Stop checking walls if hit target
+                    saveScore();
+                    return; 
                 }
 
-                // --- Room Wall Collisions ---
+                // Room Wall Collisions
                 let tipX = this.x + Math.cos(this.angle) * this.length / 2;
                 let tipY = this.y + Math.sin(this.angle) * this.length / 2;
 
-                if (tipY >= height) { // Hit Floor
+                if (tipY >= height) { 
                     this.y -= (tipY - height);
                     this.isFlying = false;
                     this.stuckWall = true;
-                } else if (tipY <= 0) { // Hit Ceiling
+                } else if (tipY <= 0) { 
                     this.y -= tipY;
                     this.isFlying = false;
                     this.stuckWall = true;
-                } else if (tipX >= width) { // Hit Back Wall (Right)
+                } else if (tipX >= width) { 
                     this.x -= (tipX - width);
                     this.isFlying = false;
                     this.stuckWall = true;
-                } else if (tipX <= 0 && this.vx < 0) { // Hit Left Wall (If flying backwards)
+                } else if (tipX <= 0 && this.vx < 0) { 
                     this.x -= tipX;
                     this.isFlying = false;
                     this.stuckWall = true;
@@ -382,7 +672,6 @@
             ctx.translate(this.x, this.y);
             ctx.rotate(this.angle);
 
-            // Shaft
             const shaftGrd = ctx.createLinearGradient(0, -2, 0, 2);
             shaftGrd.addColorStop(0, '#ffffff');
             shaftGrd.addColorStop(0.5, '#666666');
@@ -395,7 +684,6 @@
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // Arrow head
             ctx.beginPath();
             ctx.moveTo(this.length / 2, 0);
             ctx.lineTo(this.length / 2 - 10, -6);
@@ -404,7 +692,6 @@
             ctx.fillStyle = '#a0aec0';
             ctx.fill();
 
-            // Feathers
             ctx.beginPath();
             ctx.moveTo(-this.length / 2, 0);
             ctx.lineTo(-this.length / 2 - 12, -6);
@@ -418,7 +705,6 @@
         }
     }
 
-    // --- Star Particle Animation Class ---
     class StarParticle {
         constructor(x, y, color) {
             this.x = x;
@@ -438,7 +724,7 @@
         update() {
             this.x += this.vx;
             this.y += this.vy;
-            this.vy += 0.2; // Gravity pull for stars
+            this.vy += 0.2; 
             this.rotation += this.rotSpeed;
             this.life -= this.decay;
         }
@@ -487,7 +773,6 @@
         }
     }
 
-    // --- Input and Trajectory ---
     function drawTrajectory() {
         if (!isDragging || bow.pullDistance <= 10) return;
 
@@ -517,7 +802,9 @@
         ctx.setLineDash([]);
     }
 
+    // -- Event Handlers --
     function handleStart(e) {
+        if(modal.classList.contains('active') || e.target.closest('.clickable')) return;
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         isDragging = true;
@@ -560,35 +847,30 @@
         bow.angle = 0;
     }
 
-    // --- Initialization ---
+    // Initialize Objects
     resize(); 
     target = new Target();
     bow = new Bow();
 
     canvas.addEventListener('mousedown', handleStart);
-    canvas.addEventListener('mousemove', handleMove);
+    window.addEventListener('mousemove', handleMove); // Listen on window to not lose drag
     window.addEventListener('mouseup', handleEnd);
 
     canvas.addEventListener('touchstart', handleStart, {passive: false});
-    canvas.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchmove', handleMove, {passive: false});
     window.addEventListener('touchend', handleEnd);
 
-    // --- Game Loop ---
     function animate() {
         ctx.clearRect(0, 0, width, height);
 
-        // Draw Room Background
         drawRoom();
 
-        // Manage Target
         target.update();
         target.draw();
         
-        // Manage Bow
         bow.update();
         if (isDragging) drawTrajectory();
 
-        // Loaded Arrow Placeholder
         if (isDragging && bow.pullDistance > 10) {
             ctx.save();
             const ax = bow.x - Math.cos(bow.angle) * bow.pullDistance;
@@ -609,7 +891,6 @@
 
         bow.draw();
 
-        // Manage Arrows
         let activeArrows = [];
         let stuckArrowsCount = 0;
         
@@ -617,15 +898,13 @@
             arrows[i].update();
             arrows[i].draw();
             
-            // Limit the number of stuck arrows to keep performance good (Max 20 stuck arrows)
             if (arrows[i].stuckWall || arrows[i].stuckTarget) {
                 stuckArrowsCount++;
             }
             activeArrows.push(arrows[i]);
         }
         
-        // Remove oldest stuck arrows if there are more than 20
-        if (stuckArrowsCount > 20) {
+        if (stuckArrowsCount > 15) { // Adjusted for better performance on mobile
             for (let i = 0; i < activeArrows.length; i++) {
                 if (activeArrows[i].stuckWall || activeArrows[i].stuckTarget) {
                     activeArrows.splice(i, 1);
@@ -635,7 +914,6 @@
         }
         arrows = activeArrows;
 
-        // Manage Star Particles
         for (let i = starParticles.length - 1; i >= 0; i--) {
             starParticles[i].update();
             starParticles[i].draw();
