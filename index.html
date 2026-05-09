@@ -57,7 +57,7 @@
             width: 100%;
             height: 100%;
             z-index: 2;
-            pointer-events: none; /* Let touches pass through to canvas */
+            pointer-events: none;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -77,7 +77,6 @@
             gap: 15px;
         }
 
-        /* Elements inside UI layer that need clicking */
         .clickable {
             pointer-events: auto; 
         }
@@ -222,6 +221,13 @@
             font-family: inherit;
         }
 
+        /* Hide Mobile View Setting on Desktop */
+        @media (min-width: 769px) {
+            .mobile-only {
+                display: none !important;
+            }
+        }
+
         .btn {
             background: var(--primary-glow);
             color: #000;
@@ -261,7 +267,6 @@
         .history-item .date { color: #a0aec0; font-size: 12px; }
         .history-item .score { font-weight: bold; color: var(--primary-glow); }
 
-        /* Custom Scrollbar */
         .history-container::-webkit-scrollbar { width: 6px; }
         .history-container::-webkit-scrollbar-thumb { background: var(--primary-glow); border-radius: 10px; }
 
@@ -287,7 +292,7 @@
                 Score: <span id="scoreVal">0</span>
             </div>
         </div>
-        <div class="instructions">Touch & Drag to Shoot</div>
+        <div class="instructions">Pull to Shoot</div>
     </div>
 </div>
 
@@ -297,6 +302,15 @@
         <span id="closeModal" class="close-btn">&times;</span>
         
         <h2>Game Settings</h2>
+        
+        <div class="setting-group mobile-only">
+            <span>Mobile View:</span>
+            <select id="layoutSelect">
+                <option value="Horizontal">Horizontal</option>
+                <option value="Vertical">Vertical</option>
+            </select>
+        </div>
+
         <div class="setting-group">
             <span>Difficulty:</span>
             <select id="diffSelect">
@@ -324,6 +338,7 @@
     // -- Local Storage Variables & Setup --
     let score = parseInt(localStorage.getItem('arrow_score')) || 0;
     let currentDifficulty = localStorage.getItem('arrow_difficulty') || 'Medium';
+    let mobileLayout = localStorage.getItem('arrow_mobile_layout') || 'Horizontal';
     let matchHistory = JSON.parse(localStorage.getItem('arrow_history')) || [];
 
     const scoreEl = document.getElementById('scoreVal');
@@ -343,36 +358,41 @@
     const modal = document.getElementById('settingsModal');
     const closeModal = document.getElementById('closeModal');
     const diffSelect = document.getElementById('diffSelect');
+    const layoutSelect = document.getElementById('layoutSelect');
     const resetGameBtn = document.getElementById('resetGameBtn');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const historyList = document.getElementById('historyList');
 
-    // Set initial difficulty in dropdown
     diffSelect.value = currentDifficulty;
+    layoutSelect.value = mobileLayout;
 
     // UI Events
     gearBtn.addEventListener('click', openModal);
     closeModal.addEventListener('click', closeMod);
+    
     diffSelect.addEventListener('change', (e) => {
         currentDifficulty = e.target.value;
         localStorage.setItem('arrow_difficulty', currentDifficulty);
-        if(target) target.updateResponsive(); // Resize target immediately
+        if(target) target.updateResponsive();
+    });
+
+    layoutSelect.addEventListener('change', (e) => {
+        mobileLayout = e.target.value;
+        localStorage.setItem('arrow_mobile_layout', mobileLayout);
+        resize(); // Apply immediately
     });
 
     resetGameBtn.addEventListener('click', () => {
         if (score > 0) {
-            // Save to history
             const date = new Date().toLocaleString();
             matchHistory.unshift({ date: date, score: score, diff: currentDifficulty });
             localStorage.setItem('arrow_history', JSON.stringify(matchHistory));
         }
         
-        // Reset state
         score = 0;
         scoreEl.innerText = score;
         localStorage.setItem('arrow_score', score);
-        
-        arrows = []; // Clear arrows from screen
+        arrows = []; 
         
         renderHistory();
         closeMod();
@@ -412,7 +432,6 @@
         });
     }
 
-    // Modal close when clicking outside
     window.addEventListener('click', (e) => {
         if(e.target === modal) closeMod();
     });
@@ -426,10 +445,15 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     let width, height;
+    let isVertical = false;
 
     function resize() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
+        
+        // Detect if should run vertical layout (only on small screens)
+        isVertical = (mobileLayout === 'Vertical') && (width <= 768);
+
         if(target) target.updateResponsive();
         if(bow) bow.updateResponsive();
     }
@@ -448,13 +472,15 @@
         ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)';
         ctx.lineWidth = 1;
         ctx.beginPath();
+        let vanishY = isVertical ? height / 2 : height / 2 - 100;
+        
         for(let i = 0; i <= width; i += 50) {
             ctx.moveTo(i, height);
-            ctx.lineTo(width/2, height/2 - 100);
+            ctx.lineTo(width/2, vanishY);
         }
         for(let i = 0; i <= width; i += 50) {
             ctx.moveTo(i, 0);
-            ctx.lineTo(width/2, height/2 - 100);
+            ctx.lineTo(width/2, vanishY);
         }
         ctx.stroke();
 
@@ -471,11 +497,17 @@
 
         updateResponsive() {
             let config = difficulties[currentDifficulty];
-            // Apply size multiplier based on difficulty
             this.radius = Math.max(20, Math.min(60, width * 0.1)) * config.sizeMult; 
-            this.baseX = width - Math.max(50, width * 0.2); 
+            
+            if (isVertical) {
+                this.baseX = width / 2;
+                this.baseY = Math.max(120, height * 0.15); // Adjust for top bar
+            } else {
+                this.baseX = width - Math.max(50, width * 0.2); 
+                this.baseY = height / 2 + 20;
+            }
+            
             this.x = this.baseX;
-            this.baseY = height / 2 + 20;
             this.y = this.baseY;
         }
 
@@ -483,20 +515,27 @@
             let config = difficulties[currentDifficulty];
             this.angle += config.speed;
             
-            let floatRange = Math.min(100, height * 0.2) * config.rangeMult;
+            // X and Y floating ranges based on mode
+            let floatRangeX = isVertical ? (width * 0.25) * config.rangeMult : 0;
+            let floatRangeY = isVertical ? 0 : Math.min(100, height * 0.2) * config.rangeMult;
             
-            // Erratic movement for Harder levels
             if(config.erratic) {
-                this.y = this.baseY + Math.sin(this.angle) * floatRange + Math.cos(this.angle * 2.3) * (floatRange * 0.4);
+                if (isVertical) {
+                    this.x = this.baseX + Math.sin(this.angle) * floatRangeX + Math.cos(this.angle * 2.3) * (floatRangeX * 0.4);
+                } else {
+                    this.y = this.baseY + Math.sin(this.angle) * floatRangeY + Math.cos(this.angle * 2.3) * (floatRangeY * 0.4);
+                }
             } else {
-                this.y = this.baseY + Math.sin(this.angle) * floatRange;
+                if (isVertical) this.x = this.baseX + Math.sin(this.angle) * floatRangeX;
+                else this.y = this.baseY + Math.sin(this.angle) * floatRangeY;
             }
 
-            // X axis movement for Very Complex
             if(config.moveX) {
-                this.x = this.baseX + Math.sin(this.angle * 0.8) * 80;
+                if (isVertical) this.y = this.baseY + Math.sin(this.angle * 0.8) * 40;
+                else this.x = this.baseX + Math.sin(this.angle * 0.8) * 80;
             } else {
-                this.x = this.baseX;
+                if (isVertical) this.y = this.baseY;
+                else this.x = this.baseX;
             }
         }
 
@@ -546,14 +585,23 @@
         }
 
         updateResponsive() {
-            this.x = Math.max(50, width * 0.15); 
-            this.height = Math.max(80, Math.min(120, height * 0.2));
-            this.y = height / 2;
-            this.maxPull = Math.min(100, width * 0.25); 
+            if (isVertical) {
+                this.x = width / 2;
+                this.y = height - Math.max(60, height * 0.15);
+                this.height = Math.max(80, Math.min(120, width * 0.3));
+                this.maxPull = Math.min(100, height * 0.25); 
+                if(!isDragging) this.angle = -Math.PI / 2; // Point UP
+            } else {
+                this.x = Math.max(50, width * 0.15); 
+                this.y = height / 2;
+                this.height = Math.max(80, Math.min(120, height * 0.2));
+                this.maxPull = Math.min(100, width * 0.25); 
+                if(!isDragging) this.angle = 0; // Point RIGHT
+            }
         }
 
         update() {
-            this.y = height / 2;
+            // Static position, only updates on resize
         }
 
         draw() {
@@ -614,7 +662,6 @@
                 this.y += this.vy;
                 this.angle = Math.atan2(this.vy, this.vx);
 
-                // Target Collision
                 const dx = this.x + Math.cos(this.angle) * this.length / 2 - target.x;
                 const dy = this.y + Math.sin(this.angle) * this.length / 2 - target.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -639,7 +686,6 @@
                     return; 
                 }
 
-                // Room Wall Collisions
                 let tipX = this.x + Math.cos(this.angle) * this.length / 2;
                 let tipY = this.y + Math.sin(this.angle) * this.length / 2;
 
@@ -655,7 +701,7 @@
                     this.x -= (tipX - width);
                     this.isFlying = false;
                     this.stuckWall = true;
-                } else if (tipX <= 0 && this.vx < 0) { 
+                } else if (tipX <= 0) { 
                     this.x -= tipX;
                     this.isFlying = false;
                     this.stuckWall = true;
@@ -844,7 +890,7 @@
         }
         
         bow.pullDistance = 0;
-        bow.angle = 0;
+        bow.angle = isVertical ? -Math.PI / 2 : 0; // Reset angle
     }
 
     // Initialize Objects
@@ -853,7 +899,7 @@
     bow = new Bow();
 
     canvas.addEventListener('mousedown', handleStart);
-    window.addEventListener('mousemove', handleMove); // Listen on window to not lose drag
+    window.addEventListener('mousemove', handleMove); 
     window.addEventListener('mouseup', handleEnd);
 
     canvas.addEventListener('touchstart', handleStart, {passive: false});
@@ -904,7 +950,7 @@
             activeArrows.push(arrows[i]);
         }
         
-        if (stuckArrowsCount > 15) { // Adjusted for better performance on mobile
+        if (stuckArrowsCount > 15) {
             for (let i = 0; i < activeArrows.length; i++) {
                 if (activeArrows[i].stuckWall || activeArrows[i].stuckTarget) {
                     activeArrows.splice(i, 1);
