@@ -3,22 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arrow Master - 3D Mobile First</title>
+    <title>Arrow Master - 3D Room Edition</title>
     <style>
-        /* CSS 3D perspective to enable 3D effects on HTML elements */
         :root {
             --bg-color: #03050c;
             --primary-glow: #00ffcc;
-            --target-red: #ff0044;
-            --target-white: #ffffff;
-            --target-yellow: #ffcc00;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent; /* Disable tap highlight on mobile */
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -33,20 +29,17 @@
             align-items: center;
             user-select: none;
             -webkit-user-select: none;
-            perspective: 1000px; /* Enable CSS 3D perspective */
         }
 
         #game-container {
             position: relative;
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle at center, #0a102e 0%, #03050c 100%);
+            background: #020308;
+            /* Inset shadow to give a deep room feel */
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9), inset 0 0 50px rgba(0, 255, 204, 0.1);
         }
 
-        /* The canvas itself doesn't need 3D CSS transforms for the game logic */
         canvas {
             position: absolute;
             top: 0;
@@ -54,27 +47,9 @@
             width: 100%;
             height: 100%;
             z-index: 1;
-            /* Optional: subtle tilt to enhance 3D feel */
-            /* transform: rotateX(10deg); */
         }
 
-        /* 3D background grid pattern using CSS */
-        #game-container::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(0, 255, 204, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 204, 0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            transform-origin: center;
-            transform: rotateX(60deg) translateY(100px); /* Isometric ground feel */
-            z-index: 0;
-            opacity: 0.5;
-        }
-
-        /* UI Layer - 3D CSS Effects */
+        /* --- UI Layer --- */
         .ui-layer {
             position: absolute;
             top: 0;
@@ -86,21 +61,23 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 20px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 20px 30px;
         }
 
         .header {
-            width: 100%;
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 15px;
-            transform-style: preserve-3d;
-            transform: translateZ(50px); /* Make title float forward in 3D */
         }
 
         .title {
-            font-size: clamp(24px, 5vw, 36px); /* Responsive font size */
+            font-size: clamp(20px, 5vw, 36px);
             letter-spacing: 2px;
             color: #e0f7fa;
             text-transform: uppercase;
@@ -109,27 +86,32 @@
         }
 
         .score-box {
-            position: absolute;
-            top: 20px;
-            right: 20px;
             background: rgba(255, 255, 255, 0.1);
             padding: 8px 16px;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            font-size: clamp(16px, 3vw, 20px);
+            font-size: clamp(14px, 4vw, 20px);
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            pointer-events: auto; /* Allow interaction if needed */
+            white-space: nowrap;
         }
 
         .instructions {
             width: 100%;
             text-align: center;
-            font-size: clamp(14px, 3vw, 18px);
+            padding-bottom: 30px;
+            font-size: clamp(14px, 4vw, 18px);
             color: #a0aec0;
             letter-spacing: 1px;
             animation: pulse 2s infinite;
-            transform: translateZ(30px);
+        }
+
+        @media (max-width: 600px) {
+            .top-bar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 10px;
+            }
         }
 
         @keyframes pulse {
@@ -137,24 +119,6 @@
             50% { opacity: 1; }
             100% { opacity: 0.5; }
         }
-
-        /* Particle effects using CSS animations for 3D depth on success */
-        .hit-particle {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: var(--primary-glow);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 3;
-            animation: hitSparkle 0.8s ease-out forwards;
-        }
-
-        @keyframes hitSparkle {
-            0% { transform: scale(1) translateZ(50px); opacity: 1; }
-            100% { transform: scale(0) translateZ(150px) translate(calc((Math.random() - 0.5) * 100px), calc((Math.random() - 0.5) * 100px)); opacity: 0; }
-        }
-
     </style>
 </head>
 <body>
@@ -163,25 +127,23 @@
     <canvas id="gameCanvas"></canvas>
     
     <div class="ui-layer">
-        <div class="header">
-            <h1 class="title">ARROW MASTER 3D</h1>
-        </div>
-        <div class="score-box">
-            Score: <span id="scoreVal">0</span>
+        <div class="top-bar">
+            <div class="header">
+                <h1 class="title">🏹 ARROW MASTER</h1>
+            </div>
+            <div class="score-box">
+                Score: <span id="scoreVal">0</span>
+            </div>
         </div>
         <div class="instructions">Touch & Drag to Shoot</div>
     </div>
 </div>
 
 <script>
-    // Constants
     const GRAVITY = 0.25;
-    const MAX_PULL_DISTANCE = 100;
-    const PULL_POWER_MULTIPLIER = 0.4;
-    const TARGET_BASE_RADIUS = 60;
-    const ARROW_LENGTH = 60;
-
-    // Canvas Setup
+    const PULL_POWER_MULTIPLIER = 0.45;
+    const WALL_THICKNESS = 15; // The point where arrows stick to the screen edges
+    
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     let width, height;
@@ -189,59 +151,73 @@
     function resize() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
+        
+        if(target) target.updateResponsive();
+        if(bow) bow.updateResponsive();
     }
     window.addEventListener('resize', resize);
-    resize();
 
-    // Game Variables
     let score = 0;
     const scoreEl = document.getElementById('scoreVal');
     let arrows = [];
-    let particles = [];
+    let starParticles = [];
     let target;
     let bow;
     
-    // Input Handling Variables
     let isDragging = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let dragCurrentX = 0;
-    let dragCurrentY = 0;
+    let dragStartX = 0, dragStartY = 0;
+    let dragCurrentX = 0, dragCurrentY = 0;
 
-    // --- Core Game Classes ---
+    // --- Draw the 3D Room Environment ---
+    function drawRoom() {
+        // Floor perspective lines
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i = 0; i <= width; i += 50) {
+            ctx.moveTo(i, height);
+            ctx.lineTo(width/2, height/2 - 100);
+        }
+        // Ceiling perspective lines
+        for(let i = 0; i <= width; i += 50) {
+            ctx.moveTo(i, 0);
+            ctx.lineTo(width/2, height/2 - 100);
+        }
+        ctx.stroke();
 
-    // 3D-styled Floating Target
+        // Neon borders around the room
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.15)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, width, height);
+    }
+
     class Target {
         constructor() {
-            this.radius = TARGET_BASE_RADIUS;
-            this.x = width - 150;
-            this.y = height / 2;
-            this.baseY = height / 2;
             this.angle = 0;
+            this.updateResponsive();
+        }
+
+        updateResponsive() {
+            this.radius = Math.max(30, Math.min(60, width * 0.1)); 
+            this.x = width - Math.max(50, width * 0.2); 
+            this.baseY = height / 2 + 20;
+            this.y = this.baseY;
         }
 
         update() {
-            // Floating animation: moves the target up and down gently
             this.angle += 0.02;
-            this.y = this.baseY + Math.sin(this.angle) * 100;
-            // Ensure position is correct after a resize
-            this.x = width - 150; 
-            this.baseY = height / 2;
+            let floatRange = Math.min(100, height * 0.2);
+            this.y = this.baseY + Math.sin(this.angle) * floatRange;
         }
 
         draw() {
-            // Drawing from an isometric perspective gives a 3D feel
             ctx.save();
             ctx.translate(this.x, this.y);
-            // Rotate target slightly in isometric 3D space
-            // ctx.rotate(Math.PI / 8); 
 
-            // High-depth shadow for 3D look
-            ctx.shadowColor = 'rgba(0,0,0,0.5)';
-            ctx.shadowBlur = 40;
-            ctx.shadowOffsetY = 20;
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 25;
+            ctx.shadowOffsetY = 15;
 
-            // Outer Red Ring (with gradient for depth)
             const redGrd = ctx.createRadialGradient(0, 0, this.radius * 0.7, 0, 0, this.radius);
             redGrd.addColorStop(0, '#ff0044');
             redGrd.addColorStop(1, '#990029');
@@ -251,17 +227,14 @@
             ctx.fillStyle = redGrd;
             ctx.fill();
 
-            // Reset shadow for inner rings
             ctx.shadowBlur = 0;
             ctx.shadowOffsetY = 0;
 
-            // Middle White Ring
             ctx.beginPath();
             ctx.arc(0, 0, this.radius * 0.6, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
 
-            // Inner Yellow Ring (Bullseye, with bright gradient)
             const yellowGrd = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius * 0.25);
             yellowGrd.addColorStop(0, '#ffffcc');
             yellowGrd.addColorStop(1, '#ffcc00');
@@ -275,18 +248,22 @@
         }
     }
 
-    // 3D-styled Bow and String
     class Bow {
         constructor() {
-            this.x = 150;
-            this.y = height / 2;
-            this.height = 120;
             this.pullDistance = 0;
             this.angle = 0;
+            this.updateResponsive();
+        }
+
+        updateResponsive() {
+            this.x = Math.max(50, width * 0.15); 
+            this.height = Math.max(80, Math.min(120, height * 0.2));
+            this.y = height / 2;
+            this.maxPull = Math.min(100, width * 0.25); 
         }
 
         update() {
-            this.y = height / 2; // Center horizontally
+            this.y = height / 2;
         }
 
         draw() {
@@ -294,28 +271,24 @@
             ctx.translate(this.x, this.y);
             ctx.rotate(this.angle);
 
-            // Bow Glow
             ctx.shadowColor = '#00ffcc';
             ctx.shadowBlur = 15;
 
-            // Bow arc (multiple paths to build 3D depth)
             ctx.beginPath();
             ctx.moveTo(0, -this.height / 2);
             ctx.quadraticCurveTo(this.pullDistance * 0.5 + 20, 0, 0, this.height / 2);
-            ctx.strokeStyle = '#00ffcc'; // Main glow color
+            ctx.strokeStyle = '#00ffcc';
             ctx.lineWidth = 6;
             ctx.lineCap = 'round';
             ctx.stroke();
 
-            // A second darker inner line to add structure and depth
             ctx.beginPath();
             ctx.moveTo(0, -this.height / 2);
             ctx.quadraticCurveTo(this.pullDistance * 0.5 + 18, 0, 0, this.height / 2);
-            ctx.strokeStyle = '#006652'; // Deeper cyan
+            ctx.strokeStyle = '#006652';
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // Bow string (reacts to pullDistance)
             ctx.shadowBlur = 0;
             ctx.beginPath();
             ctx.moveTo(0, -this.height / 2);
@@ -329,33 +302,29 @@
         }
     }
 
-    // 3D-vector-styled Arrow
     class Arrow {
         constructor(x, y, vx, vy) {
             this.x = x;
             this.y = y;
             this.vx = vx;
             this.vy = vy;
-            this.length = ARROW_LENGTH;
+            this.length = Math.max(40, Math.min(60, width * 0.1));
             this.angle = Math.atan2(vy, vx);
             this.isFlying = true;
             this.stuckTarget = false;
-            this.stuckGround = false;
+            this.stuckWall = false;
             this.offsetX = 0;
             this.offsetY = 0;
-            this.life = 1; // Used for potential fading
         }
 
         update() {
             if (this.isFlying) {
-                // Apply physics
                 this.vy += GRAVITY;
                 this.x += this.vx;
                 this.y += this.vy;
-                this.angle = Math.atan2(this.vy, this.vx); // Turn to face the direction of travel
+                this.angle = Math.atan2(this.vy, this.vx);
 
-                // --- 3D Collision with Target ---
-                // We use an simplified perspective collision check
+                // --- Target Collision ---
                 const dx = this.x + Math.cos(this.angle) * this.length / 2 - target.x;
                 const dy = this.y + Math.sin(this.angle) * this.length / 2 - target.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -363,32 +332,46 @@
                 if (dist < target.radius) {
                     this.isFlying = false;
                     this.stuckTarget = true;
-                    // Position the arrow stuck in 3D perspective
                     this.offsetX = this.x - target.x;
                     this.offsetY = this.y - target.y;
                     
-                    // --- Scoring & Particles based on depth rungs ---
                     if (dist < target.radius * 0.25) {
-                        score += 50; // Bullseye (inner yellow)
-                        createHitEffect(this.x, this.y, '#ffcc00');
+                        score += 50; 
+                        createStarExplosion(this.x, this.y, '#ffcc00');
                     } else if (dist < target.radius * 0.6) {
-                        score += 20; // Middle white
-                        createHitEffect(this.x, this.y, '#ffffff');
+                        score += 20; 
+                        createStarExplosion(this.x, this.y, '#ffffff');
                     } else {
-                        score += 10; // Outer red
-                        createHitEffect(this.x, this.y, '#ff0044');
+                        score += 10; 
+                        createStarExplosion(this.x, this.y, '#ff0044');
                     }
                     scoreEl.innerText = score;
+                    return; // Stop checking walls if hit target
                 }
 
-                // --- 3D Ground Collision (Miss) ---
-                // We check if it goes below a certain "deep ground level"
-                if (this.y > height - 30) {
+                // --- Room Wall Collisions ---
+                let tipX = this.x + Math.cos(this.angle) * this.length / 2;
+                let tipY = this.y + Math.sin(this.angle) * this.length / 2;
+
+                if (tipY >= height) { // Hit Floor
+                    this.y -= (tipY - height);
                     this.isFlying = false;
-                    this.stuckGround = true;
+                    this.stuckWall = true;
+                } else if (tipY <= 0) { // Hit Ceiling
+                    this.y -= tipY;
+                    this.isFlying = false;
+                    this.stuckWall = true;
+                } else if (tipX >= width) { // Hit Back Wall (Right)
+                    this.x -= (tipX - width);
+                    this.isFlying = false;
+                    this.stuckWall = true;
+                } else if (tipX <= 0 && this.vx < 0) { // Hit Left Wall (If flying backwards)
+                    this.x -= tipX;
+                    this.isFlying = false;
+                    this.stuckWall = true;
                 }
+
             } else if (this.stuckTarget) {
-                // Stick to the floating target perfectly
                 this.x = target.x + this.offsetX;
                 this.y = target.y + this.offsetY;
             }
@@ -398,88 +381,116 @@
             ctx.save();
             ctx.translate(this.x, this.y);
             ctx.rotate(this.angle);
-            // Perspective scaling might be too complex for a single file, so we skip it
 
-            // Main Arrow Shaft (with gradient for structure)
-            const shaftGrd = ctx.createLinearGradient(0, -3, 0, 3);
-            shaftGrd.addColorStop(0, '#ffffff'); // Light top
-            shaftGrd.addColorStop(0.5, '#666666'); // Darker middle
-            shaftGrd.addColorStop(1, '#ffffff'); // Light bottom
+            // Shaft
+            const shaftGrd = ctx.createLinearGradient(0, -2, 0, 2);
+            shaftGrd.addColorStop(0, '#ffffff');
+            shaftGrd.addColorStop(0.5, '#666666');
+            shaftGrd.addColorStop(1, '#ffffff');
             
             ctx.beginPath();
             ctx.moveTo(-this.length / 2, 0);
             ctx.lineTo(this.length / 2, 0);
             ctx.strokeStyle = shaftGrd;
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 3;
             ctx.stroke();
 
-            // Arrow Head (3D polyhedron look)
+            // Arrow head
             ctx.beginPath();
             ctx.moveTo(this.length / 2, 0);
-            ctx.lineTo(this.length / 2 - 12, -7);
-            ctx.lineTo(this.length / 2 - 12, 7);
+            ctx.lineTo(this.length / 2 - 10, -6);
+            ctx.lineTo(this.length / 2 - 10, 6);
             ctx.closePath();
-            
-            ctx.fillStyle = '#a0aec0'; // Matte metal finish
+            ctx.fillStyle = '#a0aec0';
             ctx.fill();
 
-            // A second overlapping arrowhead shape for structure
-            ctx.beginPath();
-            ctx.moveTo(this.length / 2 - 12, 0);
-            ctx.lineTo(this.length / 2 - 2, -1);
-            ctx.lineTo(this.length / 2 - 2, 1);
-            ctx.fillStyle = '#4a5568'; // Daker inner metal
-            ctx.fill();
-
-            // Arrow Fletching (Feathers, using multiple gradient layers)
+            // Feathers
             ctx.beginPath();
             ctx.moveTo(-this.length / 2, 0);
-            ctx.lineTo(-this.length / 2 - 15, -7);
-            ctx.lineTo(-this.length / 2 - 10, 0);
-            ctx.lineTo(-this.length / 2 - 15, 7);
+            ctx.lineTo(-this.length / 2 - 12, -6);
+            ctx.lineTo(-this.length / 2 - 8, 0);
+            ctx.lineTo(-this.length / 2 - 12, 6);
             ctx.closePath();
-            
-            ctx.fillStyle = '#00ffcc'; // Bright neon fletching
+            ctx.fillStyle = '#00ffcc';
             ctx.fill();
 
             ctx.restore();
         }
     }
 
-    // Advanced 3D Particle effect using HTML elements and CSS animation
-    function createHitEffect(x, y, color) {
-        for (let i = 0; i < 20; i++) {
-            const particle = document.createElement('div');
-            particle.classList.add('hit-particle');
+    // --- Star Particle Animation Class ---
+    class StarParticle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            let angle = Math.random() * Math.PI * 2;
+            let speed = Math.random() * 6 + 3;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.color = color;
+            this.life = 1.0;
+            this.decay = Math.random() * 0.02 + 0.015;
+            this.rotation = Math.random() * Math.PI;
+            this.rotSpeed = (Math.random() - 0.5) * 0.3;
+            this.size = Math.random() * 5 + 3; 
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.2; // Gravity pull for stars
+            this.rotation += this.rotSpeed;
+            this.life -= this.decay;
+        }
+
+        draw() {
+            if(this.life <= 0) return;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.globalAlpha = Math.max(0, this.life);
             
-            // Randomize trajectory within 3D space
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * 80 + 20;
-            const dx = Math.cos(angle) * distance;
-            const dy = Math.sin(angle) * distance;
-            const dz = Math.random() * 100 + 50; // Random depth (float forward in 3D)
+            let spikes = 5;
+            let outerRadius = this.size;
+            let innerRadius = this.size / 2;
+            let rot = Math.PI / 2 * 3;
+            let x = 0, y = 0;
+            let step = Math.PI / spikes;
 
-            particle.style.backgroundColor = color;
-            particle.style.left = `${x}px`;
-            particle.style.top = `${y}px`;
+            ctx.beginPath();
+            ctx.moveTo(0, -outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = Math.cos(rot) * outerRadius;
+                y = Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+                x = Math.cos(rot) * innerRadius;
+                y = Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(0, -outerRadius);
+            ctx.closePath();
             
-            // Set animation travel using custom CSS property values
-            particle.style.setProperty('--dx', `${dx}px`);
-            particle.style.setProperty('--dy', `${dy}px`);
-            particle.style.setProperty('--dz', `${dz}px`);
-
-            document.getElementById('game-container').appendChild(particle);
-
-            // Remove particle after animation
-            setTimeout(() => particle.remove(), 1000);
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            
+            ctx.restore();
         }
     }
 
-    // --- Trajectory Preview Logic ---
+    function createStarExplosion(x, y, color) {
+        for (let i = 0; i < 20; i++) {
+            starParticles.push(new StarParticle(x, y, color));
+        }
+    }
+
+    // --- Input and Trajectory ---
     function drawTrajectory() {
         if (!isDragging || bow.pullDistance <= 10) return;
 
-        // Simulate a physical flight path for advanced pre-visualization
         const power = bow.pullDistance * PULL_POWER_MULTIPLIER;
         const vx = Math.cos(bow.angle) * power;
         const vy = Math.sin(bow.angle) * power;
@@ -492,8 +503,7 @@
         ctx.beginPath();
         ctx.moveTo(tx, ty);
         
-        // Simuate for 40 dynamic steps
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 30; i++) {
             tvy += GRAVITY;
             tx += tvx;
             ty += tvy;
@@ -502,12 +512,10 @@
 
         ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
         ctx.lineWidth = 2;
-        ctx.setLineDash([10, 15]); // Strong dashed line for 'trajectory' feel
+        ctx.setLineDash([8, 12]);
         ctx.stroke();
-        ctx.setLineDash([]); // Reset immediately
+        ctx.setLineDash([]);
     }
-
-    // --- Input Handling (Mobile & Desktop) ---
 
     function handleStart(e) {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -526,109 +534,120 @@
         dragCurrentX = clientX;
         dragCurrentY = clientY;
 
-        // Calculate bow angle and tension
         const dx = dragStartX - dragCurrentX;
         const dy = dragStartY - dragCurrentY;
         
         bow.angle = Math.atan2(dy, dx);
-        bow.pullDistance = Math.min(MAX_PULL_DISTANCE, Math.sqrt(dx*dx + dy*dy));
+        bow.pullDistance = Math.min(bow.maxPull, Math.sqrt(dx*dx + dy*dy));
     }
 
     function handleEnd() {
         if (!isDragging) return;
         isDragging = false;
         
-        // Shoot arrow if pull is strong enough
         if (bow.pullDistance > 10) {
             const power = bow.pullDistance * PULL_POWER_MULTIPLIER;
             const vx = Math.cos(bow.angle) * power;
             const vy = Math.sin(bow.angle) * power;
             
-            // Set starting point to where the bow string is pulled to
             const startX = bow.x - Math.cos(bow.angle) * bow.pullDistance;
             const startY = bow.y - Math.sin(bow.angle) * bow.pullDistance;
 
             arrows.push(new Arrow(startX, startY, vx, vy));
         }
         
-        // Reset bow immediately
         bow.pullDistance = 0;
         bow.angle = 0;
     }
 
-    // --- Main Game Cycle ---
-
-    // Initialize core objects
+    // --- Initialization ---
+    resize(); 
     target = new Target();
     bow = new Bow();
 
-    // Event Listeners for Input
     canvas.addEventListener('mousedown', handleStart);
     canvas.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleEnd);
 
-    canvas.addEventListener('touchstart', handleStart);
-    canvas.addEventListener('touchmove', handleMove);
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    canvas.addEventListener('touchmove', handleMove, {passive: false});
     window.addEventListener('touchend', handleEnd);
 
-    // Dynamic Game Loop
+    // --- Game Loop ---
     function animate() {
-        ctx.clearRect(0, 0, width, height); // Clear whole canvas per frame
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw Room Background
+        drawRoom();
 
         // Manage Target
         target.update();
         target.draw();
-
+        
         // Manage Bow
         bow.update();
-        
-        // Draw Trajectory preview (if dragging)
-        if (isDragging) {
-            drawTrajectory();
-        }
+        if (isDragging) drawTrajectory();
 
-        // --- Render a placeholder arrow inside the bow while dragging ---
+        // Loaded Arrow Placeholder
         if (isDragging && bow.pullDistance > 10) {
             ctx.save();
-            // Arrow position follows pulled bowstring
             const ax = bow.x - Math.cos(bow.angle) * bow.pullDistance;
             const ay = bow.y - Math.sin(bow.angle) * bow.pullDistance;
             ctx.translate(ax, ay);
             ctx.rotate(bow.angle);
             
-            // Draw a slightly reduced, dimmer placeholder arrow
+            let arrLen = Math.max(40, Math.min(60, width * 0.1)) * 0.8;
+            
             ctx.beginPath();
-            ctx.moveTo(-ARROW_LENGTH/2 * 0.8, 0); ctx.lineTo(ARROW_LENGTH/2 * 0.8, 0);
+            ctx.moveTo(-arrLen/2, 0); ctx.lineTo(arrLen/2, 0);
             ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3; ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(ARROW_LENGTH/2 * 0.8, 0); ctx.lineTo(ARROW_LENGTH/2 * 0.8 - 10, -5); ctx.lineTo(ARROW_LENGTH/2 * 0.8 - 10, 5);
+            ctx.moveTo(arrLen/2, 0); ctx.lineTo(arrLen/2 - 8, -4); ctx.lineTo(arrLen/2 - 8, 4);
             ctx.fillStyle = 'rgba(160, 174, 192, 0.4)'; ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(-ARROW_LENGTH/2 * 0.8, 0); ctx.lineTo(-ARROW_LENGTH/2 * 0.8 - 10, -5); ctx.lineTo(-ARROW_LENGTH/2 * 0.8 - 5, 0); ctx.lineTo(-ARROW_LENGTH/2 * 0.8 - 10, 5);
-            ctx.fillStyle = 'rgba(0, 255, 204, 0.4)'; ctx.fill();
             ctx.restore();
         }
 
-        bow.draw(); // Draw final bow state on top
+        bow.draw();
 
-        // --- Manage all spawned Arrows ---
-        for (let i = arrows.length - 1; i >= 0; i--) {
+        // Manage Arrows
+        let activeArrows = [];
+        let stuckArrowsCount = 0;
+        
+        for (let i = 0; i < arrows.length; i++) {
             arrows[i].update();
             arrows[i].draw();
             
-            // Remove arrows that go too far off screen or stay too long stuck to ground
-            if (arrows[i].x > width + 200 || arrows[i].x < -200 || (arrows[i].stuckGround && Math.random() < 0.05)) {
-                arrows.splice(i, 1);
+            // Limit the number of stuck arrows to keep performance good (Max 20 stuck arrows)
+            if (arrows[i].stuckWall || arrows[i].stuckTarget) {
+                stuckArrowsCount++;
+            }
+            activeArrows.push(arrows[i]);
+        }
+        
+        // Remove oldest stuck arrows if there are more than 20
+        if (stuckArrowsCount > 20) {
+            for (let i = 0; i < activeArrows.length; i++) {
+                if (activeArrows[i].stuckWall || activeArrows[i].stuckTarget) {
+                    activeArrows.splice(i, 1);
+                    break; 
+                }
+            }
+        }
+        arrows = activeArrows;
+
+        // Manage Star Particles
+        for (let i = starParticles.length - 1; i >= 0; i--) {
+            starParticles[i].update();
+            starParticles[i].draw();
+            if (starParticles[i].life <= 0) {
+                starParticles.splice(i, 1);
             }
         }
 
-        // Continue loop
         requestAnimationFrame(animate);
     }
 
-    // --- Start Loop ---
     animate();
-
 </script>
 </body>
 </html>
